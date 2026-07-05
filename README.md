@@ -9,6 +9,8 @@ This working version provides:
 - JPEG import
 - JSON metadata import
 - automatic JSON pairing when a JPEG has a matching file name
+- multiple Street View locations in one project
+- location list with selectable photo/metadata analysis
 - photo preview
 - metadata side panel
 - OpenStreetMap location view based on latitude and longitude
@@ -89,7 +91,7 @@ After loading Street View metadata and turbines, WindView calculates:
 
 ## Export
 
-Use `Export CSV` or `Export GeoJSON` after loading both Street View metadata and a turbine CSV.
+Use `Export CSV` or `Export GeoJSON` after selecting a Street View location and loading a turbine CSV.
 
 Each exported turbine analysis contains:
 
@@ -102,3 +104,18 @@ Each exported turbine analysis contains:
 - `in_fov`
 
 The GeoJSON export writes one point feature per turbine. Coordinates use standard GeoJSON order: `[longitude, latitude]`.
+
+## Multi-location projects
+
+Use `Add JPEG` to add a Street View image as a new location. If a JSON file with the same base name exists next to the JPEG, WindView links it automatically.
+
+Use `Attach JSON` to attach or replace metadata for the selected location.
+
+The `.windview` project file stores:
+
+- all Street View locations
+- each location's image path and metadata
+- the selected location
+- loaded turbines
+
+The map, metadata panel, turbine table, and export buttons always use the selected location.
