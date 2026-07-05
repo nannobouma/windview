@@ -15,6 +15,14 @@ def _first(data: dict[str, Any], *keys: str) -> Any:
     return None
 
 
+def _first_from_sources(keys: tuple[str, ...], *sources: dict[str, Any]) -> Any:
+    for source in sources:
+        value = _first(source, *keys)
+        if value is not None:
+            return value
+    return None
+
+
 def _number(value: Any) -> float | None:
     if value is None or value == "":
         return None
@@ -42,13 +50,13 @@ def load_json(filename: str) -> Metadata:
     camera = data.get("camera") if isinstance(data.get("camera"), dict) else {}
 
     return Metadata(
-        latitude=_number(_first(data, "latitude", "lat") or _first(location, "latitude", "lat")),
-        longitude=_number(_first(data, "longitude", "lng", "lon") or _first(location, "longitude", "lng", "lon")),
-        heading=_number(_first(data, "heading") or _first(camera, "heading")),
-        pitch=_number(_first(data, "pitch") or _first(camera, "pitch")),
-        fov=_number(_first(data, "fov") or _first(camera, "fov")),
+        latitude=_number(_first_from_sources(("latitude", "lat"), data, location)),
+        longitude=_number(_first_from_sources(("longitude", "lng", "lon"), data, location)),
+        heading=_number(_first_from_sources(("heading",), data, camera)),
+        pitch=_number(_first_from_sources(("pitch",), data, camera)),
+        fov=_number(_first_from_sources(("fov",), data, camera)),
         pano_id=_first(data, "panoid", "pano_id", "panoId", "panorama_id"),
-        width=_integer(_first(data, "width") or _first(resolution, "width")),
-        height=_integer(_first(data, "height") or _first(resolution, "height")),
+        width=_integer(_first_from_sources(("width",), data, resolution)),
+        height=_integer(_first_from_sources(("height",), data, resolution)),
         source_file=str(path),
     )
