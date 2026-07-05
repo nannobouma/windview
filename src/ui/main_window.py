@@ -17,6 +17,7 @@ from PySide6.QtWidgets import (
 
 from models.metadata import Metadata
 from models.turbine import Turbine
+from services.analysis_exporter import export_analysis_csv, export_analysis_geojson
 from services.image_loader import load_image
 from services.json_loader import load_json
 from services.project_store import load_project, save_project
@@ -53,18 +54,25 @@ class MainWindow(QMainWindow):
         open_photo = QPushButton("Open JPEG")
         open_json = QPushButton("Open JSON")
         open_turbines = QPushButton("Open turbines CSV")
+        export_csv = QPushButton("Export CSV")
+        export_geojson = QPushButton("Export GeoJSON")
         open_project = QPushButton("Open project")
         save_project_button = QPushButton("Save project")
 
         open_photo.clicked.connect(self.open_photo)
         open_json.clicked.connect(self.open_json)
         open_turbines.clicked.connect(self.open_turbines)
+        export_csv.clicked.connect(self.export_csv)
+        export_geojson.clicked.connect(self.export_geojson)
         open_project.clicked.connect(self.open_project)
         save_project_button.clicked.connect(self.save_project)
 
         toolbar.addWidget(open_photo)
         toolbar.addWidget(open_json)
         toolbar.addWidget(open_turbines)
+        toolbar.addSeparator()
+        toolbar.addWidget(export_csv)
+        toolbar.addWidget(export_geojson)
         toolbar.addSeparator()
         toolbar.addWidget(open_project)
         toolbar.addWidget(save_project_button)
@@ -129,6 +137,44 @@ class MainWindow(QMainWindow):
             self.statusBar().showMessage(f"{len(self.current_turbines)} turbines geladen: {filename}")
         except Exception as exc:  # noqa: BLE001 - UI boundary shows the error
             self._show_error("Turbines laden mislukt", exc)
+
+    def export_csv(self) -> None:
+        filename, _ = QFileDialog.getSaveFileName(
+            self,
+            "Export turbine analysis CSV",
+            "",
+            "CSV (*.csv)",
+        )
+        if not filename:
+            return
+
+        if not filename.lower().endswith(".csv"):
+            filename = f"{filename}.csv"
+
+        try:
+            count = export_analysis_csv(filename, self.current_metadata, self.current_turbines)
+            self.statusBar().showMessage(f"{count} turbine-analyses geexporteerd: {filename}")
+        except Exception as exc:  # noqa: BLE001 - UI boundary shows the error
+            self._show_error("CSV export mislukt", exc)
+
+    def export_geojson(self) -> None:
+        filename, _ = QFileDialog.getSaveFileName(
+            self,
+            "Export turbine analysis GeoJSON",
+            "",
+            "GeoJSON (*.geojson);;JSON (*.json)",
+        )
+        if not filename:
+            return
+
+        if not filename.lower().endswith((".geojson", ".json")):
+            filename = f"{filename}.geojson"
+
+        try:
+            count = export_analysis_geojson(filename, self.current_metadata, self.current_turbines)
+            self.statusBar().showMessage(f"{count} turbine-analyses geexporteerd: {filename}")
+        except Exception as exc:  # noqa: BLE001 - UI boundary shows the error
+            self._show_error("GeoJSON export mislukt", exc)
 
     def open_project(self) -> None:
         filename, _ = QFileDialog.getOpenFileName(

@@ -15,6 +15,7 @@ This working version provides:
 - turbine CSV import
 - turbine markers and sight lines on the map
 - distance, bearing, relative viewing angle, and in-FOV checks
+- turbine analysis export to CSV and GeoJSON
 - project save and open as `.windview` JSON files
 
 ## Install
@@ -29,6 +30,13 @@ pip install -r requirements.txt
 
 ```powershell
 python src/main.py
+```
+
+## Test
+
+```powershell
+$env:PYTHONPATH = "src"
+python -m unittest discover -s tests
 ```
 
 ## Expected Street View JSON fields
@@ -78,3 +86,19 @@ After loading Street View metadata and turbines, WindView calculates:
 - compass bearing to the turbine
 - relative angle compared with the camera heading
 - whether the turbine lies inside the Street View field of view when heading and FOV are known
+
+## Export
+
+Use `Export CSV` or `Export GeoJSON` after loading both Street View metadata and a turbine CSV.
+
+Each exported turbine analysis contains:
+
+- `name`
+- `latitude`
+- `longitude`
+- `distance_m`
+- `bearing_deg`
+- `relative_heading_deg`
+- `in_fov`
+
+The GeoJSON export writes one point feature per turbine. Coordinates use standard GeoJSON order: `[longitude, latitude]`.
