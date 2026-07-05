@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from pathlib import Path
 
+from PySide6.QtCore import Qt
 from PySide6.QtWidgets import (
     QFileDialog,
     QHBoxLayout,
@@ -13,15 +14,17 @@ from PySide6.QtWidgets import (
     QVBoxLayout,
     QWidget,
 )
-from PySide6.QtCore import Qt
 
 from models.metadata import Metadata
+from models.turbine import Turbine
 from services.image_loader import load_image
 from services.json_loader import load_json
 from services.project_store import load_project, save_project
+from services.turbine_loader import load_turbines_csv
 from ui.map_panel import MapPanel
 from ui.metadata_panel import MetadataPanel
 from ui.photo_panel import PhotoPanel
+from ui.turbine_panel import TurbinePanel
 
 
 class MainWindow(QMainWindow):
@@ -32,9 +35,11 @@ class MainWindow(QMainWindow):
 
         self.current_image_path: str | None = None
         self.current_metadata: Metadata | None = None
+        self.current_turbines: list[Turbine] = []
 
         self.photo = PhotoPanel()
         self.metadata_panel = MetadataPanel()
+        self.turbine_panel = TurbinePanel()
         self.map_panel = MapPanel()
 
         self._build_toolbar()
@@ -47,16 +52,19 @@ class MainWindow(QMainWindow):
 
         open_photo = QPushButton("Open JPEG")
         open_json = QPushButton("Open JSON")
+        open_turbines = QPushButton("Open turbines CSV")
         open_project = QPushButton("Open project")
         save_project_button = QPushButton("Save project")
 
         open_photo.clicked.connect(self.open_photo)
         open_json.clicked.connect(self.open_json)
+        open_turbines.clicked.connect(self.open_turbines)
         open_project.clicked.connect(self.open_project)
         save_project_button.clicked.connect(self.save_project)
 
         toolbar.addWidget(open_photo)
         toolbar.addWidget(open_json)
+        toolbar.addWidget(open_turbines)
         toolbar.addSeparator()
         toolbar.addWidget(open_project)
         toolbar.addWidget(save_project_button)
@@ -66,7 +74,8 @@ class MainWindow(QMainWindow):
         right_layout = QVBoxLayout(right_panel)
         right_layout.setContentsMargins(8, 0, 0, 0)
         right_layout.addWidget(self.metadata_panel, 2)
-        right_layout.addWidget(self.map_panel, 3)
+        right_layout.addWidget(self.turbine_panel, 2)
+        right_layout.addWidget(self.map_panel, 4)
 
         splitter = QSplitter(Qt.Horizontal)
         splitter.addWidget(self.photo)
@@ -104,6 +113,23 @@ class MainWindow(QMainWindow):
         if filename:
             self._load_metadata(filename)
 
+    def open_turbines(self) -> None:
+        filename, _ = QFileDialog.getOpenFileName(
+            self,
+            "Open turbine CSV",
+            "",
+            "CSV (*.csv);;Text (*.txt);;All files (*.*)",
+        )
+        if not filename:
+            return
+
+        try:
+            self.current_turbines = load_turbines_csv(filename)
+            self._refresh_turbine_views()
+            self.statusBar().showMessage(f"{len(self.current_turbines)} turbines geladen: {filename}")
+        except Exception as exc:  # noqa: BLE001 - UI boundary shows the error
+            self._show_error("Turbines laden mislukt", exc)
+
     def open_project(self) -> None:
         filename, _ = QFileDialog.getOpenFileName(
             self,
@@ -115,10 +141,12 @@ class MainWindow(QMainWindow):
             return
 
         try:
-            image_path, metadata = load_project(filename)
+            image_path, metadata, turbines = load_project(filename)
+            self.current_turbines = turbines
             if image_path:
                 self._load_photo(image_path)
             self._set_metadata(metadata)
+            self._refresh_turbine_views()
         except Exception as exc:  # noqa: BLE001 - UI boundary shows the error
             self._show_error("Project openen mislukt", exc)
 
@@ -136,7 +164,8 @@ class MainWindow(QMainWindow):
             filename = f"{filename}.windview"
 
         try:
-            save_project(filename, self.current_image_path, self.current_metadata)
+            save_project(filename, self.current_image_path, self.current_metadata, self.current_turbines)
+            self.statusBar().showMessage(f"Project opgeslagen: {filename}")
         except Exception as exc:  # noqa: BLE001 - UI boundary shows the error
             self._show_error("Project opslaan mislukt", exc)
 
@@ -158,7 +187,11 @@ class MainWindow(QMainWindow):
     def _set_metadata(self, metadata: Metadata | None) -> None:
         self.current_metadata = metadata
         self.metadata_panel.show_metadata(metadata)
-        self.map_panel.show_metadata(metadata)
+        self._refresh_turbine_views()
+
+    def _refresh_turbine_views(self) -> None:
+        self.turbine_panel.show_turbines(self.current_metadata, self.current_turbines)
+        self.map_panel.show_data(self.current_metadata, self.current_turbines)
 
     def _show_error(self, title: str, exc: Exception) -> None:
         QMessageBox.critical(self, title, str(exc))
